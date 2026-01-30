@@ -1,0 +1,275 @@
+using System.Text.Json;
+
+namespace MetaFrm.Razor.Storage.Local
+{
+    internal class LocalStorageService(IStorageProvider storageProvider, IJsonSerializer serializer) : ILocalStorageService, ISyncLocalStorageService
+    {
+        public async ValueTask SetItemAsync<T>(string key, T data, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            var e = await RaiseOnChangingAsync<T>(key, data).ConfigureAwait(false);
+
+            if (e.Cancel)
+                return;
+
+            var serialisedData = serializer.Serialize(data);
+            await storageProvider.SetItemAsync(key, serialisedData, cancellationToken).ConfigureAwait(false);
+
+            RaiseOnChanged(key, e.OldValue, data);
+        }
+
+        public async ValueTask SetItemAsStringAsync(string key, string data, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            ArgumentNullException.ThrowIfNull(data);
+
+            var e = await RaiseOnChangingAsync<string>(key, data).ConfigureAwait(false);
+
+            if (e.Cancel)
+                return;
+
+            await storageProvider.SetItemAsync(key, data, cancellationToken).ConfigureAwait(false);
+
+            RaiseOnChanged(key, e.OldValue, data);
+        }
+
+        public async ValueTask<T?> GetItemAsync<T>(string key, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            var serialisedData = await storageProvider.GetItemAsync(key, cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(serialisedData))
+                return default;
+
+            try
+            {
+                return serializer.Deserialize<T>(serialisedData);
+            }
+            catch (JsonException e) when (e.Path == "$" && typeof(T) == typeof(string))
+            {
+                // For backward compatibility return the plain string.
+                // On the next save a correct value will be stored and this Exception will not happen again, for this 'key'
+                return (T)(object)serialisedData;
+            }
+        }
+
+        public ValueTask<string?> GetItemAsStringAsync(string key, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return storageProvider.GetItemAsync(key, cancellationToken);
+        }
+
+        public ValueTask RemoveItemAsync(string key, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return storageProvider.RemoveItemAsync(key, cancellationToken);
+        }
+
+        public ValueTask ClearAsync(CancellationToken cancellationToken = default)
+            => storageProvider.ClearAsync(cancellationToken);
+
+        public ValueTask<int> LengthAsync(CancellationToken cancellationToken = default)
+            => storageProvider.LengthAsync(cancellationToken);
+
+        public ValueTask<string?> KeyAsync(int index, CancellationToken cancellationToken = default)
+            => storageProvider.KeyAsync(index, cancellationToken);
+
+        public ValueTask<IEnumerable<string>> KeysAsync(CancellationToken cancellationToken = default)
+            => storageProvider.KeysAsync(cancellationToken);
+
+        public ValueTask<bool> ContainKeyAsync(string key, CancellationToken cancellationToken = default)
+            => storageProvider.ContainKeyAsync(key, cancellationToken);
+
+        public ValueTask RemoveItemsAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default)
+            => storageProvider.RemoveItemsAsync(keys, cancellationToken);
+
+        public IEnumerable<string> Keys()
+        {
+            return storageProvider.Keys();
+        }
+
+        public void SetItem<T>(string key, T data)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            var e = RaiseOnChangingSync<T>(key, data);
+
+            if (e.Cancel)
+                return;
+
+            var serialisedData = serializer.Serialize(data);
+            storageProvider.SetItem(key, serialisedData);
+
+            RaiseOnChanged(key, e.OldValue, data);
+        }
+
+        public void SetItemAsString(string key, string data)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            ArgumentNullException.ThrowIfNull(data);
+
+            var e = RaiseOnChangingSync<string>(key, data);
+
+            if (e.Cancel)
+                return;
+
+            storageProvider.SetItem(key, data);
+
+            RaiseOnChanged(key, e.OldValue, data);
+        }
+
+        public T? GetItem<T>(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            var serialisedData = storageProvider.GetItem(key);
+
+            if (string.IsNullOrWhiteSpace(serialisedData))
+                return default;
+
+            try
+            {
+                return serializer.Deserialize<T>(serialisedData);
+            }
+            catch (JsonException e) when (e.Path == "$" && typeof(T) == typeof(string))
+            {
+                // For backward compatibility return the plain string.
+                // On the next save a correct value will be stored and this Exception will not happen again, for this 'key'
+                return (T)(object)serialisedData;
+            }
+        }
+
+        public string? GetItemAsString(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return storageProvider.GetItem(key);
+        }
+
+        public void RemoveItem(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentNullException(nameof(key));
+
+            storageProvider.RemoveItem(key);
+        }
+
+        public void RemoveItems(IEnumerable<string> keys)
+        {
+            ArgumentNullException.ThrowIfNull(keys);
+
+            foreach (var key in keys)
+            {
+                storageProvider.RemoveItem(key);
+            }
+        }
+
+        public void Clear()
+            => storageProvider.Clear();
+
+        public int Length()
+            => storageProvider.Length();
+
+        public string? Key(int index)
+            => storageProvider.Key(index);
+
+        public bool ContainKey(string key)
+            => storageProvider.ContainKey(key);
+
+        public event EventHandler<ChangingEventArgs>? Changing;
+        private async Task<ChangingEventArgs> RaiseOnChangingAsync<T>(string key, object? data)
+        {
+            var e = new ChangingEventArgs
+            {
+                Key = key,
+                OldValue = await GetItemInternalAsync<T>(key).ConfigureAwait(false),
+                NewValue = data
+            };
+
+            Changing?.Invoke(this, e);
+
+            return e;
+        }
+
+        private ChangingEventArgs RaiseOnChangingSync<T>(string key, object? data)
+        {
+            var e = new ChangingEventArgs
+            {
+                Key = key,
+                OldValue = GetItemInternal<T>(key),
+                NewValue = data
+            };
+
+            Changing?.Invoke(this, e);
+
+            return e;
+        }
+
+        private async Task<T?> GetItemInternalAsync<T>(string key, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            var serialisedData = await storageProvider.GetItemAsync(key, cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(serialisedData))
+                return default;
+            try
+            {
+                return serializer.Deserialize<T>(serialisedData);
+            }
+            catch (JsonException)
+            {
+                return (T)(object)serialisedData;
+            }
+        }
+
+        private object? GetItemInternal<T>(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            var serialisedData = storageProvider.GetItem(key);
+
+            if (string.IsNullOrWhiteSpace(serialisedData))
+                return default;
+
+            try
+            {
+                return serializer.Deserialize<T>(serialisedData);
+            }
+            catch (JsonException)
+            {
+                return serialisedData;
+            }
+        }
+
+        public event EventHandler<ChangedEventArgs>? Changed;
+        private void RaiseOnChanged(string key, object? oldValue, object? data)
+        {
+            var e = new ChangedEventArgs
+            {
+                Key = key,
+                OldValue = oldValue,
+                NewValue = data
+            };
+
+            Changed?.Invoke(this, e);
+        }
+    }
+}

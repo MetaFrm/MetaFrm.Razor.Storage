@@ -1,0 +1,48 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>MetaFrm.Razor.Storage</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>MetaFrm.Razor.Storage</AssemblyName>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>MetaFrm.Razor.Storage.net10.0</PackageId>
+    <Version>10.0.0.0-beta1</Version>
+    <Authors>dsun</Authors>
+    <Company>Meta Framework</Company>
+    <Copyright>Copyright 2026. dsun all rights reserved.</Copyright>
+    <PackageProjectUrl>https://github.com/MetaFrm/MetaFrm.Razor.Storage</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/MetaFrm/MetaFrm.Razor.Storage</RepositoryUrl>
+    <PackageTags>meta;framework;dotnet;maui;</PackageTags>
+    <SourceRevisionId>build$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss:fffZ"))</SourceRevisionId>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <Title>Meta Framework Razor Storage(LocalStorage, SessionStorage)</Title>
+    <Product>Meta Framework Razor Storage(LocalStorage, SessionStorage)</Product>
+    <Description>Meta Framework
+(Multi platform &amp; Meta management)</Description>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Session\IStorageProvider.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\readme.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="icon.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+</Project>
