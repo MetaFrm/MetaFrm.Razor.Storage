@@ -7,7 +7,7 @@ namespace MetaFrm.Razor.Storage.Session
     {
         private const string StorageNotAvailableMessage = "Unable to access the browser storage. This is most likely due to the browser settings.";
 
-        private readonly IJSInProcessRuntime JSInProcessRuntime = (IJSInProcessRuntime)jSRuntime;
+        private readonly IJSInProcessRuntime? JSInProcessRuntime = jSRuntime as IJSInProcessRuntime;
 
         public void Clear()
         {
