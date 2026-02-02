@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace MetaFrm.Razor.Storage.Local
 {
-    internal class LocalStorageService(IStorageProvider storageProvider, IJsonSerializer serializer) : ILocalStorageService, ISyncLocalStorageService
+    internal class LocalStorageService(ILocalStorageProvider storageProvider, IJsonSerializer serializer) : ILocalStorageService, ISyncLocalStorageService
     {
         public async ValueTask SetItemAsync<T>(string key, T data, CancellationToken cancellationToken = default)
         {

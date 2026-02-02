@@ -2,13 +2,10 @@ using System.Text.Json;
 
 namespace MetaFrm.Razor.Storage.Session
 {
-    internal class SessionStorageService(IStorageProvider storageProvider, IJsonSerializer serializer) : ISessionStorageService, ISyncSessionStorageService
+    internal class SessionStorageService(ISessionStorageProvider storageProvider, IJsonSerializer serializer) : ISessionStorageService, ISyncSessionStorageService
     {
-        private readonly IStorageProvider _storageProvider = storageProvider;
-        private readonly IJsonSerializer _serializer = serializer;
-
         public ValueTask RemoveItemsAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default)
-            => _storageProvider.RemoveItemsAsync(keys, cancellationToken);
+            => storageProvider.RemoveItemsAsync(keys, cancellationToken);
 
         public async ValueTask SetItemAsync<T>(string key, T data, CancellationToken cancellationToken = default)
         {
@@ -20,8 +17,8 @@ namespace MetaFrm.Razor.Storage.Session
             if (e.Cancel)
                 return;
 
-            var serialisedData = _serializer.Serialize(data);
-            await _storageProvider.SetItemAsync(key, serialisedData, cancellationToken).ConfigureAwait(false);
+            var serialisedData = serializer.Serialize(data);
+            await storageProvider.SetItemAsync(key, serialisedData, cancellationToken).ConfigureAwait(false);
 
             RaiseOnChanged(key, e.OldValue, data);
         }
@@ -38,7 +35,7 @@ namespace MetaFrm.Razor.Storage.Session
             if (e.Cancel)
                 return;
 
-            await _storageProvider.SetItemAsync(key, data, cancellationToken).ConfigureAwait(false);
+            await storageProvider.SetItemAsync(key, data, cancellationToken).ConfigureAwait(false);
 
             RaiseOnChanged(key, e.OldValue, data);
         }
@@ -48,14 +45,14 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentNullException(nameof(key));
 
-            var serialisedData = await _storageProvider.GetItemAsync(key, cancellationToken).ConfigureAwait(false);
+            var serialisedData = await storageProvider.GetItemAsync(key, cancellationToken).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(serialisedData))
                 return default;
 
             try
             {
-                return _serializer.Deserialize<T>(serialisedData);
+                return serializer.Deserialize<T>(serialisedData);
             }
             catch (JsonException e) when (e.Path == "$" && typeof(T) == typeof(string))
             {
@@ -70,7 +67,7 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return _storageProvider.GetItemAsync(key, cancellationToken);
+            return storageProvider.GetItemAsync(key, cancellationToken);
         }
 
         public ValueTask RemoveItemAsync(string key, CancellationToken cancellationToken = default)
@@ -78,23 +75,23 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return _storageProvider.RemoveItemAsync(key, cancellationToken);
+            return storageProvider.RemoveItemAsync(key, cancellationToken);
         }
 
         public ValueTask ClearAsync(CancellationToken cancellationToken = default)
-            => _storageProvider.ClearAsync(cancellationToken);
+            => storageProvider.ClearAsync(cancellationToken);
 
         public ValueTask<int> LengthAsync(CancellationToken cancellationToken = default)
-            => _storageProvider.LengthAsync(cancellationToken);
+            => storageProvider.LengthAsync(cancellationToken);
 
         public ValueTask<string?> KeyAsync(int index, CancellationToken cancellationToken = default)
-            => _storageProvider.KeyAsync(index, cancellationToken);
+            => storageProvider.KeyAsync(index, cancellationToken);
 
         public ValueTask<IEnumerable<string>> KeysAsync(CancellationToken cancellationToken = default)
-            => _storageProvider.KeysAsync(cancellationToken);
+            => storageProvider.KeysAsync(cancellationToken);
 
         public ValueTask<bool> ContainKeyAsync(string key, CancellationToken cancellationToken = default)
-            => _storageProvider.ContainKeyAsync(key, cancellationToken);
+            => storageProvider.ContainKeyAsync(key, cancellationToken);
 
         public void SetItem<T>(string key, T data)
         {
@@ -106,8 +103,8 @@ namespace MetaFrm.Razor.Storage.Session
             if (e.Cancel)
                 return;
 
-            var serialisedData = _serializer.Serialize(data);
-            _storageProvider.SetItem(key, serialisedData);
+            var serialisedData = serializer.Serialize(data);
+            storageProvider.SetItem(key, serialisedData);
 
             RaiseOnChanged(key, e.OldValue, data);
         }
@@ -124,7 +121,7 @@ namespace MetaFrm.Razor.Storage.Session
             if (e.Cancel)
                 return;
 
-            _storageProvider.SetItem(key, data);
+            storageProvider.SetItem(key, data);
 
             RaiseOnChanged(key, e.OldValue, data);
         }
@@ -134,14 +131,14 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentNullException(nameof(key));
 
-            var serialisedData = _storageProvider.GetItem(key);
+            var serialisedData = storageProvider.GetItem(key);
 
             if (string.IsNullOrWhiteSpace(serialisedData))
                 return default;
 
             try
             {
-                return _serializer.Deserialize<T>(serialisedData);
+                return serializer.Deserialize<T>(serialisedData);
             }
             catch (JsonException e) when (e.Path == "$" && typeof(T) == typeof(string))
             {
@@ -156,7 +153,7 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return _storageProvider.GetItem(key);
+            return storageProvider.GetItem(key);
         }
 
         public void RemoveItem(string key)
@@ -164,7 +161,7 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentNullException(nameof(key));
 
-            _storageProvider.RemoveItem(key);
+            storageProvider.RemoveItem(key);
         }
 
         public void RemoveItems(IEnumerable<string> keys)
@@ -173,24 +170,24 @@ namespace MetaFrm.Razor.Storage.Session
 
             foreach (var key in keys)
             {
-                _storageProvider.RemoveItem(key);
+                storageProvider.RemoveItem(key);
             }
         }
 
         public void Clear()
-            => _storageProvider.Clear();
+            => storageProvider.Clear();
 
         public int Length()
-            => _storageProvider.Length();
+            => storageProvider.Length();
 
         public string? Key(int index)
-            => _storageProvider.Key(index);
+            => storageProvider.Key(index);
 
         public IEnumerable<string> Keys()
-            => _storageProvider.Keys();
+            => storageProvider.Keys();
 
         public bool ContainKey(string key)
-            => _storageProvider.ContainKey(key);
+            => storageProvider.ContainKey(key);
 
         public event EventHandler<ChangingEventArgs>? Changing;
         private async Task<ChangingEventArgs> RaiseOnChangingAsync(string key, object? data)
@@ -226,13 +223,13 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            var serialisedData = await _storageProvider.GetItemAsync(key).ConfigureAwait(false);
+            var serialisedData = await storageProvider.GetItemAsync(key).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(serialisedData))
                 return default;
             try
             {
-                return _serializer.Deserialize<T>(serialisedData);
+                return serializer.Deserialize<T>(serialisedData);
             }
             catch (JsonException)
             {
@@ -245,14 +242,14 @@ namespace MetaFrm.Razor.Storage.Session
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            var serialisedData = _storageProvider.GetItem(key);
+            var serialisedData = storageProvider.GetItem(key);
 
             if (string.IsNullOrWhiteSpace(serialisedData))
                 return default;
 
             try
             {
-                return _serializer.Deserialize<object>(serialisedData);
+                return serializer.Deserialize<object>(serialisedData);
             }
             catch (JsonException)
             {
