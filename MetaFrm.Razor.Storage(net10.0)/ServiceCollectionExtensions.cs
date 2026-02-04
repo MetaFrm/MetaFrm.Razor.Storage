@@ -3,6 +3,9 @@ using MetaFrm.Razor.Storage.Session;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 
+// Copyright (c) 2019 Blazored
+// Modified by dsun on 2026
+// MIT License
 namespace MetaFrm.Razor.Storage
 {
     /// <summary>

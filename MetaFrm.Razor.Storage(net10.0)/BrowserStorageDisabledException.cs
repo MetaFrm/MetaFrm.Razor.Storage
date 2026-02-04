@@ -1,4 +1,7 @@
-﻿namespace MetaFrm.Razor.Storage
+﻿// Copyright (c) 2019 Blazored
+// Modified by dsun on 2026
+// MIT License
+namespace MetaFrm.Razor.Storage
 {
     /// <summary>
     /// The exception that is thrown when browser storage is disabled or unavailable.

@@ -1,4 +1,8 @@
-﻿window.setLocalStorageValue = async (key, streamReference) => {
+﻿// Copyright (c) 2019 Blazored
+// Modified by dsun on 2026
+// MIT License
+
+window.setLocalStorageValue = async (key, streamReference) => {
     const arrayBuffer = await streamReference.arrayBuffer();
     const stringValue = new TextDecoder().decode(arrayBuffer);
     localStorage.setItem(key, stringValue);
