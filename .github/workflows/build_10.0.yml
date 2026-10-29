@@ -60,11 +60,12 @@ jobs:
 
     - name: Restore dependencies
       id: ST1
-      run: dotnet restore "${{env.PROJECT_PATH}}"
-    - name: if failure
-      if: ${{ failure()}}
-      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
+      run: |
+        if dotnet restore "${{env.PROJECT_PATH}}"; then
+          echo "BUILD_STATUS=success" >> "$GITHUB_ENV"
+        else
+          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+        fi
 
 
     - name: Build Debug
@@ -74,7 +75,6 @@ jobs:
     - name: if failure
       if: ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
 
     - name: Test Debug
       id: ST3
@@ -83,7 +83,6 @@ jobs:
     - name: if failure
       if: ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
 
     - name: Build Release
       id: ST4
@@ -92,7 +91,6 @@ jobs:
     - name: if failure
       if: ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
       
     - name: Test Release
       id: ST5
@@ -101,7 +99,6 @@ jobs:
     - name: if failure
       if: ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
       
 
     - name: Upload Module
@@ -111,7 +108,6 @@ jobs:
     - name: if failure
       if: ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Upload Module Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
 
 
     - name: Pack nugets
@@ -121,7 +117,6 @@ jobs:
     - name: if failure
       if: ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
       
     # Get a short-lived NuGet API key
     - name: NuGet login (OIDC ¡æ temp API key)
@@ -138,7 +133,6 @@ jobs:
     - name: if failure
       if: ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Push to NuGet Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-           exit 1
       
 
     - name: Completed
