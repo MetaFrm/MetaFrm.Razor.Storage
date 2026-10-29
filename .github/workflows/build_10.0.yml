@@ -1,4 +1,4 @@
-name: build 10.0
+name: build
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
   COMPLETED_MESSAGE: "CI/CD Failed !!"
 
 jobs:
-  build10:
+  build:
     runs-on: ubuntu-latest
     env:
       DLL_PATH: ""
@@ -32,10 +32,11 @@ jobs:
     - name: Change DLL_ID, Validate .NET version
       shell: bash
       run: |
-        case "$NET_VERSION" in 10.0)
+        case "$NET_VERSION" in
+          10.0)
             echo "DLL_ID=${{secrets.DLL_ID_10}}" >> "$GITHUB_ENV"
             ;;
-        case "$NET_VERSION" in 11.0)
+          11.0)
             echo "DLL_ID=${{secrets.DLL_ID_11}}" >> "$GITHUB_ENV"
             ;;
           *)
