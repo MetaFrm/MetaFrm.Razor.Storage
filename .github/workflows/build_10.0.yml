@@ -77,7 +77,7 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         wget -q "${{ env.METAFRM_UPLOADMODULE_URL }}" -O "${{ env.METAFRM_UPLOADMODULE_ZIP }}"
-        unzip -q "$env:METAFRM_UPLOADMODULE_ZIP" -d temp
+        unzip -q "${{ env.METAFRM_UPLOADMODULE_ZIP }}" -d temp
 
     - name: Restore dependencies
       shell: pwsh
