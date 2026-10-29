@@ -61,18 +61,19 @@ jobs:
     - name: Restore dependencies
       id: ST1
       run: |
-        if ! dotnet restore "${{env.PROJECT_PATH}}"; then
+        dotnet restore "${{env.PROJECT_PATH}}"
+        if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
-
+        }
 
     - name: Build Debug
       id: ST2
       working-directory: ${{ env.PROJECT_PATH }}
       run: |
-        if ! dotnet build -c Debug --no-restore -v minimal; then
+        dotnet build -c Debug --no-restore -v minimal
+        if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
+        }
 
     - name: Test Debug
       id: ST3
