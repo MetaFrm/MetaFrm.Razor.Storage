@@ -33,15 +33,15 @@ jobs:
       with:
         dotnet-version: 10.0.x # NET¹öÀü
       
-    - name: mkdir temp (Windows)
+    - name: mkdir temp
       run: mkdir -p temp
         
-    - name: Install MAUI Workload (Windows), Download Upload Module (Windows), Unzip (Windows)
+    - name: Download Upload Module, Unzip, Install MAUI Workload (Windows)
       if: runner.os == 'Windows'
       run: |
-        dotnet workload install maui --ignore-failed-sources
         powershell -Command "Invoke-WebRequest -Uri '${{ env.METAFRM_UPLOADMODULE_URL }}' -OutFile '${{ env.METAFRM_UPLOADMODULE_ZIP }}'"
         powershell -Command "Expand-Archive -Path '${{ env.METAFRM_UPLOADMODULE_ZIP }}' -DestinationPath 'temp' -Force"
+        dotnet workload install maui --ignore-failed-sources
 
     - name: Download Upload Module, Unzip
       if: runner.os != 'Windows'
@@ -50,7 +50,6 @@ jobs:
         unzip -q "${{ env.METAFRM_UPLOADMODULE_ZIP }}" -d temp
 
     - name: Restore dependencies
-      id: ST1
       shell: pwsh
       run: |
         dotnet restore "${{env.PROJECT_PATH}}"
@@ -58,58 +57,44 @@ jobs:
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
-
-    - name: Build Debug
-      id: ST2
+      
+    - name: Test Release
       shell: pwsh
       run: |
-        dotnet build -c Debug --no-restore -v minimal
+        dotnet test -c Release --no-build --verbosity normal
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
 
-    - name: Test Debug
-      id: ST3
-      working-directory: ${{ env.PROJECT_PATH }}
-      run: |
-        if ! dotnet test -c Debug --no-build --verbosity normal; then
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
-
     - name: Build Release
-      id: ST4
-      working-directory: ${{ env.PROJECT_PATH }}
+      shell: pwsh
       run: |
-        if ! dotnet build -c Release --no-restore -v minimal; then
+        dotnet build -c Release --no-restore -v minimal
+        if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
-      
-    - name: Test Release
-      id: ST5
-      working-directory: ${{ env.PROJECT_PATH }}
-      run: |
-        if ! dotnet test -c Release --no-build --verbosity normal; then
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
-      
+          exit 1
+        }
 
     - name: Upload Module
-      id: ST6
+      shell: pwsh
       if: env.UPLOAD_MODULE == 'Y'
       run: |
-        if ! dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"; then
+        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+        if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Upload Module Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
-
+          exit 1
+        }
 
     - name: Pack nugets
-      id: ST7
+      shell: pwsh
       if: env.PUSH_NUGET == 'Y'
       run: |
-        if ! dotnet pack "${{env.PROJECT_PATH}}"  -c Release --no-build --output; then
+        dotnet pack "${{env.PROJECT_PATH}}"  -c Release --no-build --output
+        if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
+          exit 1
+        }
       
     # Get a short-lived NuGet API key
     - name: NuGet login (OIDC ¡æ temp API key)
@@ -120,12 +105,13 @@ jobs:
         user: ${{secrets.NUGET_USER}} # Recommended: use a secret like ${{ secrets.NUGET_USER }} for your nuget.org username (profile name), NOT your email address
 
     - name: Push to NuGet
-      id: ST8
       if: env.PUSH_NUGET == 'Y'
       run: |
-        if ! dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate; then
+        dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Push to NuGet Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        fi
+          exit 1
+        }
 
     - name: Completed
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "CI/CD Completed !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
