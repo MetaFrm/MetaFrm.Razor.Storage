@@ -107,12 +107,12 @@ jobs:
     - name: NuGet login (OIDC -> temp API key)
       uses: NuGet/login@v1
       id: login
-      if: env.PUSH_NUGET == 'Y'
+      # if: env.PUSH_NUGET == 'Y'
       with:
         user: ${{secrets.NUGET_USER}} # Recommended: use a secret like ${{ secrets.NUGET_USER }} for your nuget.org username (profile name), NOT your email address
 
     - name: Push to NuGet
-      if: env.PUSH_NUGET == 'Y'
+      # if: env.PUSH_NUGET == 'Y'
       run: |
         dotnet nuget push "111.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
         if (-not $?) {
