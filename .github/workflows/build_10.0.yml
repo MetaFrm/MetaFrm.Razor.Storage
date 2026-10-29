@@ -32,31 +32,22 @@ jobs:
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 10.0.x # NET¹öÀü
-        
-    - name: Install MAUI Workload (Windows)
-      if: runner.os == 'Windows'
-      run: dotnet workload install maui --ignore-failed-sources
       
     - name: mkdir temp (Windows)
       run: mkdir -p temp
-
-
-    - name: Download Upload Module
-      if: runner.os != 'Windows'
-      run: wget -q "${{ env.METAFRM_UPLOADMODULE_URL }}" -O "${{ env.METAFRM_UPLOADMODULE_ZIP }}"
-
-    - name: Download Upload Module (Windows)
+        
+    - name: Install MAUI Workload (Windows), Download Upload Module (Windows), Unzip (Windows)
       if: runner.os == 'Windows'
-      run: powershell -Command "Invoke-WebRequest -Uri '${{ env.METAFRM_UPLOADMODULE_URL }}' -OutFile '${{ env.METAFRM_UPLOADMODULE_ZIP }}'"
+      run: |
+        dotnet workload install maui --ignore-failed-sources
+        powershell -Command "Invoke-WebRequest -Uri '${{ env.METAFRM_UPLOADMODULE_URL }}' -OutFile '${{ env.METAFRM_UPLOADMODULE_ZIP }}'"
+        powershell -Command "Expand-Archive -Path '${{ env.METAFRM_UPLOADMODULE_ZIP }}' -DestinationPath 'temp' -Force"
 
-    - name: Unzip
+    - name: Download Upload Module, Unzip
       if: runner.os != 'Windows'
-      run: unzip -q "${{ env.METAFRM_UPLOADMODULE_ZIP }}" -d temp
-      
-    - name: Unzip (Windows)
-      if: runner.os == 'Windows'
-      run: powershell -Command "Expand-Archive -Path '${{ env.METAFRM_UPLOADMODULE_ZIP }}' -DestinationPath 'temp' -Force"
-
+      run: |
+        wget -q "${{ env.METAFRM_UPLOADMODULE_URL }}" -O "${{ env.METAFRM_UPLOADMODULE_ZIP }}"
+        unzip -q "${{ env.METAFRM_UPLOADMODULE_ZIP }}" -d temp
 
     - name: Restore dependencies
       id: ST1
