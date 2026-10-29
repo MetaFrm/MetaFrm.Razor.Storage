@@ -13,6 +13,6 @@ namespace MetaFrm.Razor.Storage
         /// <summary>
         /// Gets or sets the options to use when serializing and deserializing JSON data.
         /// </summary>
-        public JsonSerializerOptions JsonSerializerOptions { get; set; } = new();
+        public JsonSerializerOptions JsonSerializerOptions { get; set; } = new();1
     }
 }

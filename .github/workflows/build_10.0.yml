@@ -70,7 +70,7 @@ jobs:
       id: ST2
       working-directory: ${{ env.PROJECT_PATH }}
       run: |
-        if ! dotnet build1 -c Debug --no-restore -v minimal; then
+        if ! dotnet build -c Debug --no-restore -v minimal; then
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
         fi
 
