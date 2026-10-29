@@ -16,10 +16,10 @@ jobs:
   build10:
     runs-on: ubuntu-latest
     env:
-      DLL_PATH: "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})/bin/Release/net${{env.NET_VERSION}})/${{vars.NAMESPACE}}.dll" # NET버전
-      PROJECT_PATH: "${{vars.NAMESPACE}}(net${{env.NET_VERSION}}))" # NET버전
-      METAFRM_UPLOADMODULE_URL: "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}).zip" # NET버전
-      METAFRM_UPLOADMODULE_ZIP: "temp/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}).zip" # NET버전
+      DLL_PATH: "${{ vars.NAMESPACE }}(net${{ env.NET_VERSION }})/bin/Release/net${{ env.NET_VERSION }}/${{ vars.NAMESPACE }}.dll"
+      PROJECT_PATH: "${{ vars.NAMESPACE }}(net${{ env.NET_VERSION }})"
+      METAFRM_UPLOADMODULE_URL: "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{ env.NET_VERSION }}.zip"
+      METAFRM_UPLOADMODULE_ZIP: "temp/MetaFrameworkManagementSystemUploadModule${{ env.NET_VERSION }}.zip"
       METAFRM_UPLOADMODULE_FILE: "temp/MetaFrameworkManagementSystemUploadModule.dll"
 
     permissions:
@@ -32,7 +32,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: ${{env.NET_VERSION}}.x # NET버전
+        dotnet-version: "${{ env.NET_VERSION }}.x" # NET버전
       
     - name: mkdir temp
       run: mkdir -p temp
