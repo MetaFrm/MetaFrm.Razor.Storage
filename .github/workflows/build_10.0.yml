@@ -9,18 +9,11 @@ env:
   NET_VERSION: "10.0"
   PUSH_NUGET: "Y"
   UPLOAD_MODULE: "Y"
+  COMPLETED_MESSAGE: "CI/CD Failed !!"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      DLL_ID: 0
-      COMPLETED_MESSAGE: "CI/CD Failed !!"
-      DLL_PATH: ""
-      PROJECT_PATH: ""
-      METAFRM_UPLOADMODULE_URL: ""
-      METAFRM_UPLOADMODULE_ZIP: ""
-      METAFRM_UPLOADMODULE_FILE: "temp/MetaFrameworkManagementSystemUploadModule.dll"
 
     permissions:
       id-token: write  # enable GitHub OIDC token issuance for this job
@@ -45,11 +38,11 @@ jobs:
             ;;
         esac
 
-    - name: Change DLL_PATH, METAFRM_UPLOADMODULE_URL, METAFRM_UPLOADMODULE_ZIP
+    - name: Change DLL_PATH, PROJECT_PATH, METAFRM_UPLOADMODULE_URL, METAFRM_UPLOADMODULE_ZIP
       shell: bash
       run: |
-        echo "PROJECT_PATH=${{ vars.NAMESPACE }}(net${{ env.NET_VERSION }})" >> "$GITHUB_ENV"
         echo "DLL_PATH=${{vars.NAMESPACE}}(net${{env.NET_VERSION}})/bin/Release/net${{env.NET_VERSION}}/${{vars.NAMESPACE}}.dll" >> "$GITHUB_ENV"
+        echo "PROJECT_PATH=${{ vars.NAMESPACE }}(net${{ env.NET_VERSION }})" >> "$GITHUB_ENV"
         echo "METAFRM_UPLOADMODULE_URL=https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.zip" >> "$GITHUB_ENV"
         echo "METAFRM_UPLOADMODULE_ZIP=temp/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.zip" >> "$GITHUB_ENV"
     
@@ -120,7 +113,7 @@ jobs:
       shell: pwsh
       if: ${{ env.UPLOAD_MODULE == 'Y' && github.ref == 'refs/heads/master' }}
       run: |
-        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" $env:DLL_ID "$env:DLL_PATH" "${{vars.NAMESPACE}}"
+        dotnet "temp/MetaFrameworkManagementSystemUploadModule.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" $env:DLL_ID "$env:DLL_PATH" "${{vars.NAMESPACE}}"
         if ($LASTEXITCODE -ne 0) {
           "COMPLETED_MESSAGE=Upload Module Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
@@ -136,4 +129,4 @@ jobs:
       continue-on-error: true
       shell: pwsh
       if: ${{ always() && github.ref == 'refs/heads/master' }}
-      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
+      run: dotnet "temp/MetaFrameworkManagementSystemUploadModule.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
