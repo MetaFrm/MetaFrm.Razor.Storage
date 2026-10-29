@@ -75,7 +75,7 @@ jobs:
     - name: Build Debug
       id: ST2
       shell: pwsh
-      working-directory: ${{ env.PROJECT_PATH }}
+      # working-directory: ${{ env.PROJECT_PATH }}
       run: |
         try {
           dotnet build -c Debug --no-restore -v minimal
