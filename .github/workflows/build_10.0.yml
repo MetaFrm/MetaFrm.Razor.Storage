@@ -7,8 +7,8 @@ on:
     branches: [ "master" ]
 env:
   DLL_ID: 0
-  UPLOAD_MODULE: "N"
   PUSH_NUGET: "N"
+  UPLOAD_MODULE: "N"
   NET_VERSION: "10.0" # NET¹öÀü
   COMPLETED_MESSAGE: ""
 
@@ -93,16 +93,6 @@ jobs:
           exit 1
         }
 
-    - name: Upload Module
-      shell: pwsh
-      if: env.UPLOAD_MODULE == 'Y'
-      run: |
-        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        if (-not $?) {
-          Write-Host "COMPLETED_MESSAGE='Upload Module Fail !!'"
-          exit 1
-        }
-
     - name: Pack nugets
       shell: pwsh
       if: env.PUSH_NUGET == 'Y'
@@ -130,13 +120,23 @@ jobs:
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Push to NuGet Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
-        
+
+    - name: Upload Module
+      shell: pwsh
+      if: env.UPLOAD_MODULE == 'Y'
+      run: |
+        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+        if (-not $?) {
+          Write-Host "COMPLETED_MESSAGE='Upload Module Fail !!'"
+          exit 1
+        }
 
     - name: Completed message
       continue-on-error: true
       if: ${{ failure()}}
-      run: echo "COMPLETED_MESSAGE='CI/CD Completed !!'" >> "$GITHUB_ENV"
+      run: |
+        echo "COMPLETED_MESSAGE='CI/CD Completed !!'" >> "$GITHUB_ENV"
 
     - name: Completed
-      if: ${{ failure()}}
+      if: ! ${{ failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "${{env.COMPLETED_MESSAGE}}" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
