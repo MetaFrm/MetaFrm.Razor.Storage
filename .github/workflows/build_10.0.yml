@@ -126,12 +126,14 @@ jobs:
           exit 1
         }
 
+    - name: Completed message
+      shell: pwsh
+      if: success()
+      run: |
+        "COMPLETED_MESSAGE=CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
     - name: Completed
       continue-on-error: true
       shell: pwsh
       if: ${{ always() && github.ref == 'refs/heads/master' }}
-      run: |
-        if (${{ success() }}) {
-          "COMPLETED_MESSAGE=CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        }
-        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
+      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
