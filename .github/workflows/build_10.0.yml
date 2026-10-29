@@ -138,5 +138,5 @@ jobs:
         echo "COMPLETED_MESSAGE='CI/CD Completed !!'" >> "$GITHUB_ENV"
 
     - name: Completed
-      if: ! ${{ failure()}}
+      if: ${{ ! failure()}}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "${{env.COMPLETED_MESSAGE}}" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
