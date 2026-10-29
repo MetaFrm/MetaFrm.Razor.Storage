@@ -62,8 +62,13 @@ jobs:
       id: ST1
       shell: pwsh
       run: |
-        dotnet restore "${{env.PROJECT_PATH}}"
-        if (-not $?) {
+        try {
+          dotnet restore "${{env.PROJECT_PATH}}"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Build failed"
+          }
+        }
+        catch {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
         }
 
@@ -72,8 +77,13 @@ jobs:
       shell: pwsh
       working-directory: ${{ env.PROJECT_PATH }}
       run: |
-        dotnet build -c Debug --no-restore -v minimal
-        if (-not $?) {
+        try {
+          dotnet build -c Debug --no-restore -v minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "Build failed"
+          }
+        }
+        catch {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
         }
 
