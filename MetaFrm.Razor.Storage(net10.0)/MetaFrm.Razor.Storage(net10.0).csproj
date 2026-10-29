@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>MetaFrm.Razor.Storage</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageId>MetaFrm.Razor.Storage.net10.0</PackageId>
     <Version>10.0.14.0</Version>
     <Authors>dsun</Authors>

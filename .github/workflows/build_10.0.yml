@@ -6,17 +6,18 @@ on:
   pull_request:
     branches: [ "master" ]
 env:
+  NET_VERSION: "10.0" # NET버전
   DLL_ID: 0
   PUSH_NUGET: "N"
-  UPLOAD_MODULE: "N"
-  NET_VERSION: "10.0" # NET버전
-  COMPLETED_MESSAGE: ""
+  UPLOAD_MODULE: "Y"
+  COMPLETED_MESSAGE: "CI/CD Failed !!"
 
 jobs:
   build10:
     runs-on: ubuntu-latest
     env:
       DLL_PATH: ""
+      PROJECT_PATH: "" # NET버전
       METAFRM_UPLOADMODULE_URL: ""
       METAFRM_UPLOADMODULE_ZIP: ""
       METAFRM_UPLOADMODULE_FILE: "temp/MetaFrameworkManagementSystemUploadModule.dll"
@@ -26,29 +27,22 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
   
-    - name: Validate .NET version
+    - name: Change DLL_ID, Validate .NET version
       shell: bash
       run: |
-        case "$NET_VERSION" in 10.0|11.0)
-            echo "Supported .NET version: $NET_VERSION"
+        case "$NET_VERSION" in 10.0)
+            echo "DLL_ID=${{secrets.DLL_ID_10}}" >> "$GITHUB_ENV"
+            ;;
+        case "$NET_VERSION" in 11.0)
+            echo "DLL_ID=${{secrets.DLL_ID_11}}" >> "$GITHUB_ENV"
             ;;
           *)
             echo "Unsupported .NET version: $NET_VERSION"
             exit 1
             ;;
         esac
-  
-    - name: Change DLL_ID 10.0
-      shell: bash
-      if: env.NET_VERSION == '10.0'
-      run: echo "DLL_ID=${{secrets.DLL_ID_10}}" >> "$GITHUB_ENV"
-  
-    - name: Change DLL_ID 11.0
-      shell: bash
-      if: env.NET_VERSION == '11.0'
-      run: echo "DLL_ID=${{secrets.DLL_ID_11}}" >> "$GITHUB_ENV"
 
     - name: Change DLL_PATH, METAFRM_UPLOADMODULE_URL, METAFRM_UPLOADMODULE_ZIP
       shell: bash
@@ -59,7 +53,7 @@ jobs:
         echo "METAFRM_UPLOADMODULE_ZIP=temp/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.zip" >> "$GITHUB_ENV"
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: "${{ env.NET_VERSION }}.x"
       
@@ -120,15 +114,15 @@ jobs:
     - name: NuGet login (OIDC -> temp API key)
       uses: NuGet/login@v1
       id: login
-      if: ${{ github.ref == 'refs/heads/master' }}
+      if: ${{ env.PUSH_NUGET == 'Y' && github.ref == 'refs/heads/master' }}
       with:
         user: ${{secrets.NUGET_USER}} # Recommended: use a secret like ${{ secrets.NUGET_USER }} for your nuget.org username (profile name), NOT your email address
 
     - name: Push to NuGet
       shell: pwsh
-      if: ${{ github.ref == 'refs/heads/master' }}
+      if: ${{ env.PUSH_NUGET == 'Y' && github.ref == 'refs/heads/master' }}
       run: |
-        dotnet nuget push "111.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
         if ($LASTEXITCODE -ne 0) {
           "COMPLETED_MESSAGE=Push to NuGet Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
@@ -151,6 +145,7 @@ jobs:
         "COMPLETED_MESSAGE=CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Completed
+      continue-on-error: true
       shell: pwsh
-      if: always()
+      if: ${{ always() && github.ref == 'refs/heads/master' }}
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
