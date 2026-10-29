@@ -113,7 +113,7 @@ jobs:
 
     - name: Push to NuGet
       shell: pwsh
-      if: ${{ env.PUSH_NUGET == 'Y' }}
+      # if: ${{ env.PUSH_NUGET == 'Y' }}
       run: |
         dotnet nuget push "111.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
         if ($LASTEXITCODE -ne 0) {
@@ -123,7 +123,7 @@ jobs:
 
     - name: Upload Module
       shell: pwsh
-      # if: ${{ env.UPLOAD_MODULE == 'Y' }}
+      if: ${{ env.UPLOAD_MODULE == 'Y' }}
       run: |
         dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" $env:DLL_ID "$env:DLL_PATH" "${{vars.NAMESPACE}}"
         if ($LASTEXITCODE -ne 0) {
