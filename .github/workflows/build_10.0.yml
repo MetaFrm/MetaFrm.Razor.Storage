@@ -65,6 +65,7 @@ jobs:
         dotnet restore "${{env.PROJECT_PATH}}"
         if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          exit 1
         }
 
     - name: Build Debug
@@ -74,6 +75,7 @@ jobs:
         dotnet build -c Debug --no-restore -v minimal
         if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          exit 1
         }
 
     - name: Test Debug
