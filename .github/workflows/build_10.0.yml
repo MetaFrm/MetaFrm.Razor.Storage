@@ -71,7 +71,7 @@ jobs:
       run: |
         dotnet restore "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"
         if (-not $?) {
-          Write-Host "COMPLETED_MESSAGE='Restore dependencies Fail !!'"
+          Write-Host "COMPLETED_MESSAGE=Restore dependencies Fail !!"
           exit 1
         }
       
