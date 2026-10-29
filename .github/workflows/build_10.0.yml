@@ -48,7 +48,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 10.0.x # NET¹öÀü
+        dotnet-version: "${{ env.NET_VERSION }}.x"
       
     - name: mkdir temp
       run: mkdir -p temp
@@ -60,7 +60,7 @@ jobs:
         powershell -Command "Expand-Archive -Path '${{ env.METAFRM_UPLOADMODULE_ZIP }}' -DestinationPath 'temp' -Force"
         dotnet workload install maui --ignore-failed-sources
 
-    - name: Download Upload Module, Unzip
+    - name: Download Upload Module, Unzip (Non-Windows)
       if: runner.os != 'Windows'
       run: |
         wget -q "${{ env.METAFRM_UPLOADMODULE_URL }}" -O "${{ env.METAFRM_UPLOADMODULE_ZIP }}"
@@ -70,17 +70,8 @@ jobs:
       shell: pwsh
       run: |
         dotnet restore "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"
-        if (-not $?) {
+        if ($LASTEXITCODE -ne 0) {
           "COMPLETED_MESSAGE=Restore dependencies Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-      
-    - name: Test Release
-      shell: pwsh
-      run: |
-        dotnet test -c Release --no-build --verbosity normal
-        if (-not $?) {
-          "COMPLETED_MESSAGE=Test Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
 
@@ -88,8 +79,17 @@ jobs:
       shell: pwsh
       run: |
         dotnet build -c Release --no-restore -v minimal
-        if (-not $?) {
+        if ($LASTEXITCODE -ne 0) {
           "COMPLETED_MESSAGE=Build Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          exit 1
+        }
+      
+    - name: Test Release
+      shell: pwsh
+      run: |
+        dotnet test -c Release --no-build --verbosity normal
+        if ($LASTEXITCODE -ne 0) {
+          "COMPLETED_MESSAGE=Test Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
 
@@ -98,7 +98,7 @@ jobs:
       if: env.PUSH_NUGET == 'Y'
       run: |
         dotnet pack "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"  -c Release --no-build --output .
-        if (-not $?) {
+        if ($LASTEXITCODE -ne 0) {
           "COMPLETED_MESSAGE=Pack nugets Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
@@ -107,34 +107,37 @@ jobs:
     - name: NuGet login (OIDC -> temp API key)
       uses: NuGet/login@v1
       id: login
-      # if: env.PUSH_NUGET == 'Y'
+      if: ${{ env.PUSH_NUGET == 'Y' }}
       with:
         user: ${{secrets.NUGET_USER}} # Recommended: use a secret like ${{ secrets.NUGET_USER }} for your nuget.org username (profile name), NOT your email address
 
     - name: Push to NuGet
       shell: pwsh
-      # if: env.PUSH_NUGET == 'Y'
+      if: ${{ env.PUSH_NUGET == 'Y' }}
       run: |
         dotnet nuget push "111.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
-        if (-not $?) {
+        if ($LASTEXITCODE -ne 0) {
           "COMPLETED_MESSAGE=Push to NuGet Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
 
     - name: Upload Module
       shell: pwsh
-      if: env.UPLOAD_MODULE == 'Y'
+      if: ${{ env.UPLOAD_MODULE == 'Y' }}
       run: |
-        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
-        if (-not $?) {
-          Write-Host "COMPLETED_MESSAGE='Upload Module Fail !!'"
+        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.actor}}^${{secrets.PASSWORD}}" "upload" $env:DLL_ID "$env:DLL_PATH" "${{vars.NAMESPACE}}"
+        if ($LASTEXITCODE -ne 0) {
+          "COMPLETED_MESSAGE=Upload Module Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
 
     - name: Completed message
+      shell: pwsh
       if: ${{ ! failure()}}
-      run: echo "COMPLETED_MESSAGE='CI/CD Completed !!'" >> "$GITHUB_ENV"
+      run: |
+        "COMPLETED_MESSAGE=CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Completed
-      if: ${{ failure() || ! failure() }}
-      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "${{env.COMPLETED_MESSAGE}}" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+      shell: pwsh
+      if: always()
+      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.actor}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
