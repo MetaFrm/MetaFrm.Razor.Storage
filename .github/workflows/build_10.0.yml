@@ -10,16 +10,14 @@ env:
   UPLOAD_MODULE: "N"
   PUSH_NUGET: "N"
   NET_VERSION: "10.0" # NET버전
-  PASSWORD: ${{secrets.PASSWORD}}
 
 jobs:
   build10:
     runs-on: ubuntu-latest
     env:
       DLL_PATH: "${{vars.NAMESPACE}}(net10.0)/bin/Release/net10.0/${{vars.NAMESPACE}}.dll" # NET버전
-      METAFRM_UPLOADMODULE_URL: "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule10.0.zip" # NET버전
-      METAFRM_UPLOADMODULE_ZIP: "temp/MetaFrameworkManagementSystemUploadModule10.0.zip" # NET버전
-      METAFRM_UPLOADMODULE_FILE: "temp/MetaFrameworkManagementSystemUploadModule.dll"
+      METAFRM_UPLOADMODULE_URL: "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule"
+      METAFRM_UPLOADMODULE: "temp/MetaFrameworkManagementSystemUploadModule"
 
     permissions:
       id-token: write  # enable GitHub OIDC token issuance for this job
@@ -27,6 +25,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+  
+    - name: Change DLL_ID
+      shell: bash
+      run: |
+        echo "DLL_PATH=${{vars.NAMESPACE}}(net${{env.NET_VERSION}})/bin/Release/net${{env.NET_VERSION}}/${{vars.NAMESPACE}}.dll" >> "$GITHUB_ENV"
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
@@ -39,22 +42,22 @@ jobs:
     - name: Download Upload Module, Unzip, Install MAUI Workload (Windows)
       if: runner.os == 'Windows'
       run: |
-        powershell -Command "Invoke-WebRequest -Uri '${{ env.METAFRM_UPLOADMODULE_URL }}' -OutFile '${{ env.METAFRM_UPLOADMODULE_ZIP }}'"
-        powershell -Command "Expand-Archive -Path '${{ env.METAFRM_UPLOADMODULE_ZIP }}' -DestinationPath 'temp' -Force"
+        powershell -Command "Invoke-WebRequest -Uri '${{ env.METAFRM_UPLOADMODULE_URL }}${{env.NET_VERSION}}.zip' -OutFile '${{ env.METAFRM_UPLOADMODULE }}${{env.NET_VERSION}}.zip'"
+        powershell -Command "Expand-Archive -Path '${{ env.METAFRM_UPLOADMODULE }}${{env.NET_VERSION}}.zip' -DestinationPath 'temp' -Force"
         dotnet workload install maui --ignore-failed-sources
 
     - name: Download Upload Module, Unzip
       if: runner.os != 'Windows'
       run: |
-        wget -q "${{ env.METAFRM_UPLOADMODULE_URL }}" -O "${{ env.METAFRM_UPLOADMODULE_ZIP }}"
-        unzip -q "${{ env.METAFRM_UPLOADMODULE_ZIP }}" -d temp
+        wget -q "${{ env.METAFRM_UPLOADMODULE_URL }}${{env.NET_VERSION}}.zip" -O "${{ env.METAFRM_UPLOADMODULE }}${{env.NET_VERSION}}.zip"
+        unzip -q "${{ env.METAFRM_UPLOADMODULE }}${{env.NET_VERSION}}.zip" -d temp
 
     - name: Restore dependencies
       shell: pwsh
       run: |
         dotnet restore "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
       
@@ -63,7 +66,7 @@ jobs:
       run: |
         dotnet test -c Release --no-build --verbosity normal
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Test Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
 
@@ -72,7 +75,7 @@ jobs:
       run: |
         dotnet build -c Release --no-restore -v minimal
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Build Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
 
@@ -80,19 +83,19 @@ jobs:
       shell: pwsh
       if: env.UPLOAD_MODULE == 'Y'
       run: |
-        dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+        dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Upload Module Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Upload Module Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
 
     - name: Pack nugets
       shell: pwsh
-      # if: env.PUSH_NUGET == 'Y'
+      if: env.PUSH_NUGET == 'Y'
       run: |
         dotnet pack "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"  -c Release --no-build --output .
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
       
@@ -109,9 +112,9 @@ jobs:
       run: |
         dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Push to NuGet Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Push to NuGet Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
 
     - name: Completed
-      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "CI/CD Completed !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+      run: dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "CI/CD Completed !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
