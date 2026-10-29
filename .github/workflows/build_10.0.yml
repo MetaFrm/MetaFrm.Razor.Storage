@@ -60,6 +60,7 @@ jobs:
 
     - name: Restore dependencies
       id: ST1
+      continue-on-error: true
       run: dotnet restore "${{env.PROJECT_PATH}}1"
     - name: if failure
       if: ${{ steps.ST1.outcome == 'failure' }}
@@ -68,6 +69,7 @@ jobs:
 
     - name: Build Debug
       id: ST2
+      continue-on-error: true
       working-directory: ${{ env.PROJECT_PATH }}
       run: dotnet build -c Debug --no-restore -v minimal
     - name: if failure
@@ -76,6 +78,7 @@ jobs:
 
     - name: Test Debug
       id: ST3
+      continue-on-error: true
       working-directory: ${{ env.PROJECT_PATH }}
       run: dotnet test -c Debug --no-build --verbosity normal
     - name: if failure
@@ -84,6 +87,7 @@ jobs:
 
     - name: Build Release
       id: ST4
+      continue-on-error: true
       working-directory: ${{ env.PROJECT_PATH }}
       run: dotnet build -c Release --no-restore -v minimal
     - name: if failure
@@ -92,6 +96,7 @@ jobs:
       
     - name: Test Release
       id: ST5
+      continue-on-error: true
       working-directory: ${{ env.PROJECT_PATH }}
       run: dotnet test -c Release --no-build --verbosity normal
     - name: if failure
@@ -101,6 +106,7 @@ jobs:
 
     - name: Upload Module
       id: ST6
+      continue-on-error: true
       if: env.UPLOAD_MODULE == 'Y'
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
     - name: if failure
@@ -110,6 +116,7 @@ jobs:
 
     - name: Pack nugets
       id: ST7
+      continue-on-error: true
       if: env.PUSH_NUGET == 'Y'
       run: dotnet pack "${{env.PROJECT_PATH}}"  -c Release --no-build --output .
     - name: if failure
