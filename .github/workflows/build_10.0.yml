@@ -10,6 +10,7 @@ env:
   UPLOAD_MODULE: "N"
   PUSH_NUGET: "N"
   NET_VERSION: "10.0" # NET¹öÀü
+  COMPLETED_MESSAGE: ""
 
 jobs:
   build10:
@@ -70,7 +71,7 @@ jobs:
       run: |
         dotnet restore "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          Write-Host "COMPLETED_MESSAGE='Restore dependencies Fail !!'"
           exit 1
         }
       
@@ -79,7 +80,7 @@ jobs:
       run: |
         dotnet test -c Release --no-build --verbosity normal
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Test Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          Write-Host "COMPLETED_MESSAGE='Test Release Fail !!'"
           exit 1
         }
 
@@ -88,7 +89,7 @@ jobs:
       run: |
         dotnet build -c Release --no-restore -v minimal
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Build Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          Write-Host "COMPLETED_MESSAGE='Build Release Fail !!'"
           exit 1
         }
 
@@ -98,7 +99,7 @@ jobs:
       run: |
         dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Upload Module Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          Write-Host "COMPLETED_MESSAGE='Upload Module Fail !!'"
           exit 1
         }
 
@@ -108,7 +109,7 @@ jobs:
       run: |
         dotnet pack "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"  -c Release --no-build --output .
         if (-not $?) {
-          dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+          Write-Host "COMPLETED_MESSAGE='Pack nugets Fail !!'"
           exit 1
         }
       
@@ -125,9 +126,15 @@ jobs:
       run: |
         dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
         if (-not $?) {
+          echo "COMPLETED_MESSAGE='Push to NuGet Fail !!'" >> "$GITHUB_ENV"
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "Push to NuGet Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
         }
+        
+
+    - name: Completed message
+      if: env.COMPLETED_MESSAGE == ''
+      run: echo "COMPLETED_MESSAGE='CI/CD Completed !!'" >> "$GITHUB_ENV"
 
     - name: Completed
-      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "CI/CD Completed !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+      run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "${{env.COMPLETED_MESSAGE}}" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
