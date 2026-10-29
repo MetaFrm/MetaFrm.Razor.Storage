@@ -103,7 +103,7 @@ jobs:
           "COMPLETED_MESSAGE=Pack nugets Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
-        dotnet nuget push "111.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
         if ($LASTEXITCODE -ne 0) {
           "COMPLETED_MESSAGE=Push to NuGet Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
