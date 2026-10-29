@@ -63,8 +63,8 @@ jobs:
       run: dotnet restore "${{env.PROJECT_PATH}}"
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
 
 
     - name: Build Debug
@@ -73,8 +73,8 @@ jobs:
       run: dotnet build -c Debug --no-restore -v minimal
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
 
     - name: Test Debug
       id: ST3
@@ -82,8 +82,8 @@ jobs:
       run: dotnet test -c Debug --no-build --verbosity normal
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Debug Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
 
     - name: Build Release
       id: ST4
@@ -91,8 +91,8 @@ jobs:
       run: dotnet build -c Release --no-restore -v minimal
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Build Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
       
     - name: Test Release
       id: ST5
@@ -100,8 +100,8 @@ jobs:
       run: dotnet test -c Release --no-build --verbosity normal
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Test Release Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
       
 
     - name: Upload Module
@@ -110,8 +110,8 @@ jobs:
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "upload" ${{env.DLL_ID}} "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Upload Module Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
 
 
     - name: Pack nugets
@@ -120,8 +120,8 @@ jobs:
       run: dotnet pack "${{env.PROJECT_PATH}}"  -c Release --no-build --output .
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
       
     # Get a short-lived NuGet API key
     - name: NuGet login (OIDC ¡æ temp API key)
@@ -137,8 +137,8 @@ jobs:
       run: dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
     - name: if failure
       if: ${{ failure()}}
-      continue-on-error: false
       run: dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Push to NuGet Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
+           exit 1
       
 
     - name: Completed
