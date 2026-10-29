@@ -90,7 +90,7 @@ jobs:
       shell: pwsh
       # if: env.PUSH_NUGET == 'Y'
       run: |
-        dotnet pack "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"  -c Release --no-build --output
+        dotnet pack "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"  -c Release --no-build --output .
         if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
