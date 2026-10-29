@@ -9,17 +9,16 @@ env:
   DLL_ID: ${{secrets.DLL_ID_10}} # NET버전
   UPLOAD_MODULE: "N"
   PUSH_NUGET: "N"
-  NET_VERSION: "10.0"
+  NET_VERSION: "10.0" # NET버전
   PASSWORD: ${{secrets.PASSWORD}}
 
 jobs:
   build10:
     runs-on: ubuntu-latest
     env:
-      DLL_PATH: "${{ vars.NAMESPACE }}(net${{ env.NET_VERSION }})/bin/Release/net${{ env.NET_VERSION }}/${{ vars.NAMESPACE }}.dll"
-      PROJECT_PATH: "${{ vars.NAMESPACE }}(net${{ env.NET_VERSION }})"
-      METAFRM_UPLOADMODULE_URL: "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{ env.NET_VERSION }}.zip"
-      METAFRM_UPLOADMODULE_ZIP: "temp/MetaFrameworkManagementSystemUploadModule${{ env.NET_VERSION }}.zip"
+      DLL_PATH: "${{vars.NAMESPACE}}(net10.0)/bin/Release/net10.0/${{vars.NAMESPACE}}.dll" # NET버전
+      METAFRM_UPLOADMODULE_URL: "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule10.0.zip" # NET버전
+      METAFRM_UPLOADMODULE_ZIP: "temp/MetaFrameworkManagementSystemUploadModule10.0.zip" # NET버전
       METAFRM_UPLOADMODULE_FILE: "temp/MetaFrameworkManagementSystemUploadModule.dll"
 
     permissions:
@@ -32,7 +31,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: "${{ env.NET_VERSION }}.x" # NET버전
+        dotnet-version: 10.0.x # NET버전
       
     - name: mkdir temp
       run: mkdir -p temp
@@ -53,7 +52,7 @@ jobs:
     - name: Restore dependencies
       shell: pwsh
       run: |
-        dotnet restore "${{env.PROJECT_PATH}}"
+        dotnet restore "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"
         if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Restore dependencies Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
@@ -89,9 +88,9 @@ jobs:
 
     - name: Pack nugets
       shell: pwsh
-      if: env.PUSH_NUGET == 'Y'
+      # if: env.PUSH_NUGET == 'Y'
       run: |
-        dotnet pack "${{env.PROJECT_PATH}}"  -c Release --no-build --output
+        dotnet pack "${{vars.NAMESPACE}}(net${{env.NET_VERSION}})"  -c Release --no-build --output
         if (-not $?) {
           dotnet "${{env.METAFRM_UPLOADMODULE_FILE}}" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{env.PASSWORD}}" "notification" "Pack nugets Fail !!" "${{env.DLL_PATH}}" "${{vars.NAMESPACE}}"
           exit 1
