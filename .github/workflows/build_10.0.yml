@@ -52,10 +52,10 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: "${{env.NET_VERSION}}.0.x"
-      
+
     - name: mkdir temp
       run: mkdir -p temp
-        
+
     - name: Download Upload Module, Unzip, Install MAUI Workload (Windows)
       if: runner.os == 'Windows'
       run: |
