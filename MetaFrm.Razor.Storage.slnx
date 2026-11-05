@@ -8,5 +8,5 @@
     <File Path="LICENSE.txt" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="MetaFrm.Razor.Storage(net10.0)/MetaFrm.Razor.Storage(net10.0).csproj" />
+  <Project Path="net10/MetaFrm.Razor.Storage(net10.0).csproj" />
 </Solution>
