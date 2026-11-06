@@ -26,10 +26,12 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: "${{env.NET_VERSION}}.0.x"
-  
-    - name: Change DLL_ID, Validate .NET version
+
+
+    - name: mkdir -p temp, Change DLL_ID, Validate .NET version
       shell: pwsh
       run: |
+        mkdir -p temp
         switch ($env:NET_VERSION) {
           '10' {
             "DLL_ID=${{secrets.DLL_ID_10}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -45,6 +47,7 @@ jobs:
           }
         }
 
+
     - name: Change PROJECT_PATH, METAFRM_UPLOADMODULE_URL, METAFRM_UPLOADMODULE_ZIP
       shell: pwsh
       run: |
@@ -52,12 +55,12 @@ jobs:
         "METAFRM_UPLOADMODULE_URL=https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         "METAFRM_UPLOADMODULE_ZIP=temp/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+
     - name: Change DLL_PATH, mkdir temp, Download Upload Module, Unzip, Install MAUI Workload (Windows)
       shell: pwsh
       if: runner.os == 'Windows'
       run: |
         "DLL_PATH=net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0-windows/${{vars.NAMESPACE}}.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        mkdir -p temp
         powershell -Command "Invoke-WebRequest -Uri '$env:METAFRM_UPLOADMODULE_URL' -OutFile '$env:METAFRM_UPLOADMODULE_ZIP'"
         powershell -Command "Expand-Archive -Path '$env:METAFRM_UPLOADMODULE_ZIP' -DestinationPath 'temp' -Force"
         dotnet workload install maui --ignore-failed-sources
@@ -67,9 +70,9 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         "DLL_PATH=net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0/${{vars.NAMESPACE}}.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        mkdir -p temp
         wget -q "${{env.METAFRM_UPLOADMODULE_URL}}" -O "${{env.METAFRM_UPLOADMODULE_ZIP}}"
         unzip -q "${{env.METAFRM_UPLOADMODULE_ZIP}}" -d temp
+
 
     - name: Restore dependencies, Build Release, Test
       shell: pwsh
@@ -89,6 +92,7 @@ jobs:
           "COMPLETED_MESSAGE=Test Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
+
 
     # Get a short-lived NuGet API key
     - name: NuGet login (OIDC -> temp API key)
@@ -113,6 +117,7 @@ jobs:
           exit 1
         }
 
+
     - name: Upload Module
       shell: pwsh
       if: ${{ env.UPLOAD_MODULE == 'Y' && github.ref == 'refs/heads/master' }}
@@ -122,6 +127,7 @@ jobs:
           "COMPLETED_MESSAGE=Upload Module Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 1
         }
+
 
     - name: Completed message
       shell: pwsh
