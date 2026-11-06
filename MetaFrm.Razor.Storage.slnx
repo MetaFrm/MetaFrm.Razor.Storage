@@ -3,6 +3,37 @@
   <Folder Name="/.github/workflows/">
     <File Path=".github/workflows/build_10.0.yml" />
   </Folder>
+  <Folder Name="/src/">
+    <File Path="src/BrowserStorageDisabledException.cs" />
+    <File Path="src/ChangedEventArgs.cs" />
+    <File Path="src/ChangingEventArgs.cs" />
+    <File Path="src/IJsonSerializer.cs" />
+    <File Path="src/ISessionStorageService.cs" />
+    <File Path="src/IStorageProvider.cs" />
+    <File Path="src/ISyncStorageService.cs" />
+    <File Path="src/ServiceCollectionExtensions.cs" />
+    <File Path="src/StorageOptions.cs" />
+    <File Path="src/SystemTextJsonSerializer.cs" />
+    <File Path="src/TimespanJsonConverter.cs" />
+  </Folder>
+  <Folder Name="/src/Local/">
+    <File Path="src/Local/BrowserStorageProvider.cs" />
+    <File Path="src/Local/BrowserStorageProviderBase.cs" />
+    <File Path="src/Local/BrowserStreamingStorageProvider.cs" />
+    <File Path="src/Local/ILocalStorageProvider.cs" />
+    <File Path="src/Local/ILocalStorageService.cs" />
+    <File Path="src/Local/ISyncLocalStorageService.cs" />
+    <File Path="src/Local/LocalStorageService.cs" />
+    <File Path="src/Local/ServiceCollectionLocalExtensions.cs" />
+  </Folder>
+  <Folder Name="/src/Session/">
+    <File Path="src/Session/BrowserStorageProvider.cs" />
+    <File Path="src/Session/ISessionStorageProvider.cs" />
+    <File Path="src/Session/ISessionStorageService.cs" />
+    <File Path="src/Session/ISyncSessionStorageService.cs" />
+    <File Path="src/Session/ServiceCollectionSessionExtensions.cs" />
+    <File Path="src/Session/SessionStorageService.cs" />
+  </Folder>
   <Folder Name="/솔루션 항목/">
     <File Path=".gitignore" />
     <File Path="LICENSE.txt" />

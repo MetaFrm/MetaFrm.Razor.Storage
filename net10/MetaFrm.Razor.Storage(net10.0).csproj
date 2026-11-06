@@ -28,6 +28,33 @@
     <Compile Remove="Session\IStorageProvider.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\src\BrowserStorageDisabledException.cs" Link="BrowserStorageDisabledException.cs" />
+    <Compile Include="..\src\ChangedEventArgs.cs" Link="ChangedEventArgs.cs" />
+    <Compile Include="..\src\ChangingEventArgs.cs" Link="ChangingEventArgs.cs" />
+    <Compile Include="..\src\IJsonSerializer.cs" Link="IJsonSerializer.cs" />
+    <Compile Include="..\src\ISessionStorageService.cs" Link="ISessionStorageService.cs" />
+    <Compile Include="..\src\IStorageProvider.cs" Link="IStorageProvider.cs" />
+    <Compile Include="..\src\ISyncStorageService.cs" Link="ISyncStorageService.cs" />
+    <Compile Include="..\src\Local\BrowserStorageProvider.cs" Link="Local\BrowserStorageProvider.cs" />
+    <Compile Include="..\src\Local\BrowserStorageProviderBase.cs" Link="Local\BrowserStorageProviderBase.cs" />
+    <Compile Include="..\src\Local\BrowserStreamingStorageProvider.cs" Link="Local\BrowserStreamingStorageProvider.cs" />
+    <Compile Include="..\src\Local\ILocalStorageProvider.cs" Link="Local\ILocalStorageProvider.cs" />
+    <Compile Include="..\src\Local\ILocalStorageService.cs" Link="Local\ILocalStorageService.cs" />
+    <Compile Include="..\src\Local\ISyncLocalStorageService.cs" Link="Local\ISyncLocalStorageService.cs" />
+    <Compile Include="..\src\Local\LocalStorageService.cs" Link="Local\LocalStorageService.cs" />
+    <Compile Include="..\src\Local\ServiceCollectionLocalExtensions.cs" Link="Local\ServiceCollectionLocalExtensions.cs" />
+    <Compile Include="..\src\ServiceCollectionExtensions.cs" Link="ServiceCollectionExtensions.cs" />
+    <Compile Include="..\src\Session\BrowserStorageProvider.cs" Link="Session\BrowserStorageProvider.cs" />
+    <Compile Include="..\src\Session\ISessionStorageProvider.cs" Link="Session\ISessionStorageProvider.cs" />
+    <Compile Include="..\src\Session\ISessionStorageService.cs" Link="Session\ISessionStorageService.cs" />
+    <Compile Include="..\src\Session\ISyncSessionStorageService.cs" Link="Session\ISyncSessionStorageService.cs" />
+    <Compile Include="..\src\Session\ServiceCollectionSessionExtensions.cs" Link="Session\ServiceCollectionSessionExtensions.cs" />
+    <Compile Include="..\src\Session\SessionStorageService.cs" Link="Session\SessionStorageService.cs" />
+    <Compile Include="..\src\StorageOptions.cs" Link="StorageOptions.cs" />
+    <Compile Include="..\src\SystemTextJsonSerializer.cs" Link="SystemTextJsonSerializer.cs" />
+    <Compile Include="..\src\TimespanJsonConverter.cs" Link="TimespanJsonConverter.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="..\readme.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
