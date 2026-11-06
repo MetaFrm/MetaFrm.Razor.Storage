@@ -12,263 +12,269 @@ env:
   PUSH_NUGET: "Y"
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    permissions:
-      id-token: write
-      contents: read
-
-
-    steps:
-    - uses: actions/checkout@v7
-  
-    - name: Extract .NET version from workflow file name
-      shell: pwsh
-      run: |
-        $workflowFile = "${{ github.workflow_ref }}".Split('@')[0].Split('/')[-1]
-
-        if ($workflowFile -match '_(\d+)\.0\.ya?ml$') {
-          $netVersion = $Matches[1]
-          Write-Host "NET_VERSION=$netVersion"
-
-          "NET_VERSION=$netVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        }
-        else {
-          Write-Error "Cannot extract .NET version from workflow file: $workflowFile"
-          exit 1
-        }
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
-      with:
-        dotnet-version: "${{env.NET_VERSION}}.0.x"
-
-
-    - name: mkdir temp, Change DLL_ID, Validate .NET version
-      shell: pwsh
-      run: |
-        mkdir -p temp
-        switch ($env:NET_VERSION) {
-          '10' {
-            "DLL_ID=${{secrets.DLL_ID_10}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            break
-          }
-          '11' {
-            "DLL_ID=${{secrets.DLL_ID_11}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            break
-          }
-          default {
-            "COMPLETED_MESSAGE=Unsupported .NET version: $env.NET_VERSION" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            exit 1
-          }
-        }
-
-
-    - name: Change DLL_PATH, Download Upload Module, Unzip, Install MAUI Workload (Windows)
-      shell: pwsh
-      if: runner.os == 'Windows'
-      run: |
-        "DLL_PATH=net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0-windows/${{vars.NAMESPACE}}.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        powershell -Command "Invoke-WebRequest -Uri 'https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip' -OutFile '$env:METAFRM_UPLOADMODULE{{env.NET_VERSION}}.0.zip'"
-        powershell -Command "Expand-Archive -Path '$env:METAFRM_UPLOADMODULE{{env.NET_VERSION}}.0.zip' -DestinationPath 'temp' -Force"
-        dotnet workload install maui --ignore-failed-sources
-
-    - name: Change DLL_PATH, Download Upload Module, Unzip (Non-Windows)
-      shell: pwsh
-      if: runner.os != 'Windows'
-      run: |
-        "DLL_PATH=net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0/${{vars.NAMESPACE}}.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        wget -q "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip" -O "${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip"
-        unzip -q "${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip" -d temp
-
-
-    - name: Restore dependencies, Build Release, Test
-      shell: pwsh
-      run: |
-        dotnet restore "net${{env.NET_VERSION}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=Restore dependencies Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        dotnet build "net${{env.NET_VERSION}}" -c Release --no-restore -v minimal
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=Build Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        dotnet test "net${{env.NET_VERSION}}" -c Release --no-build --verbosity normal
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=Test Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-
-
-    - name: NuGet login (OIDC -> temp API key)
-      uses: NuGet/login@v1
-      id: login
-      if: ${{ env.PUSH_NUGET == 'Y' && github.ref == 'refs/heads/master' }}
-      with:
-        user: ${{secrets.NUGET_USER}}
-
-    - name: Pack nugets, Push to NuGet
-      shell: pwsh
-      if: ${{ env.PUSH_NUGET == 'Y' && github.ref == 'refs/heads/master' }}
-      run: |
-        dotnet pack "$env:PROJECT_PATH" -c Release --no-build --output .
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=Pack nugets Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=Push to NuGet Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-
-
-    - name: Upload Module
-      shell: pwsh
-      if: ${{ env.IS_DEPLOY == 'Y' && github.ref == 'refs/heads/master' }}
-      run: |
-        dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" $env:DLL_ID "$env:DLL_PATH" "${{vars.NAMESPACE}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=Upload Module Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-
-
-    - name: Completed message
-      shell: pwsh
-      if: success()
-      run: |
-        "COMPLETED_MESSAGE=CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-    - name: Completed
-      continue-on-error: true
-      shell: pwsh
-      if: ${{ always() && github.ref == 'refs/heads/master' }}
-      run: dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
-
-
-  Deploy:
-    name: ${{vars.DEPLOY_RUNNER_LABEL}}
-    needs: [build]
+  oidc-build:
     if: ${{ vars.DEPLOY_RUNNER_LABEL != '' }}
-    runs-on:
-      group: Default
-      labels: ${{vars.DEPLOY_RUNNER_LABEL}}
 
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+
+  normal-build:
+    if: ${{ vars.DEPLOY_RUNNER_LABEL == '' }}
+
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
   
-    - name: Extract .NET version from workflow file name
-      run: |
-        $workflowFile = "${{ github.workflow_ref }}".Split('@')[0].Split('/')[-1]
+  #   steps:
+  #   - uses: actions/checkout@v7
+  
+  #   - name: Extract .NET version from workflow file name
+  #     shell: pwsh
+  #     run: |
+  #       $workflowFile = "${{ github.workflow_ref }}".Split('@')[0].Split('/')[-1]
 
-        if ($workflowFile -match '_(\d+)\.0\.ya?ml$') {
-          $netVersion = $Matches[1]
-          Write-Host "NET_VERSION=$netVersion"
+  #       if ($workflowFile -match '_(\d+)\.0\.ya?ml$') {
+  #         $netVersion = $Matches[1]
+  #         Write-Host "NET_VERSION=$netVersion"
 
-          "NET_VERSION=$netVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        }
-        else {
-          Write-Error "Cannot extract .NET version from workflow file: $workflowFile"
-          exit 1
-        }
+  #         "NET_VERSION=$netVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #       }
+  #       else {
+  #         Write-Error "Cannot extract .NET version from workflow file: $workflowFile"
+  #         exit 1
+  #       }
     
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
-      with:
-        dotnet-version: "${{env.NET_VERSION}}.0.x"
-
-    - name: current-time
-      uses: josStorer/get-current-time@v2
-      id: current-time
-      with:
-          format: YYYY-MM-DD_HHmmss
-          utcOffset: "+09:00"
-      if: always()
+  #   - name: Setup .NET
+  #     uses: actions/setup-dotnet@v6
+  #     with:
+  #       dotnet-version: "${{env.NET_VERSION}}.0.x"
 
 
-    - name: mkdir temp, Download Upload Module, Unzip
-      run: |
-        mkdir -p temp
-        powershell -Command "Invoke-WebRequest -Uri 'https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip' -OutFile '${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip'"
-        powershell -Command "Expand-Archive -Path '${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip' -DestinationPath 'temp' -Force"
+  #   - name: mkdir temp, Change DLL_ID, Validate .NET version
+  #     shell: pwsh
+  #     run: |
+  #       mkdir -p temp
+  #       switch ($env:NET_VERSION) {
+  #         '10' {
+  #           "DLL_ID=${{secrets.DLL_ID_10}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #           break
+  #         }
+  #         '11' {
+  #           "DLL_ID=${{secrets.DLL_ID_11}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #           break
+  #         }
+  #         default {
+  #           "COMPLETED_MESSAGE=Unsupported .NET version: $env.NET_VERSION" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #           exit 1
+  #         }
+  #       }
 
 
-    - name: Restore dependencies, Build Release, Test Release
-      run: |
-        dotnet restore "net${{env.NET_VERSION}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] Restore dependencies Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        dotnet build "net${{env.NET_VERSION}}" -c Release --no-restore -v minimal
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] Build Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        dotnet test "net${{env.NET_VERSION}}" -c Release --no-build --verbosity normal
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] Test Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
+  #   - name: Change DLL_PATH, Download Upload Module, Unzip, Install MAUI Workload (Windows)
+  #     shell: pwsh
+  #     if: runner.os == 'Windows'
+  #     run: |
+  #       "DLL_PATH=net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0-windows/${{vars.NAMESPACE}}.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #       powershell -Command "Invoke-WebRequest -Uri 'https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip' -OutFile '$env:METAFRM_UPLOADMODULE{{env.NET_VERSION}}.0.zip'"
+  #       powershell -Command "Expand-Archive -Path '$env:METAFRM_UPLOADMODULE{{env.NET_VERSION}}.0.zip' -DestinationPath 'temp' -Force"
+  #       dotnet workload install maui --ignore-failed-sources
 
-    - name: Backup
-      run: |
-        xcopy /s "${{vars.DEPLOY_PATH}}\${{vars.DEPLOY_NAME}}\*" "${{vars.DEPLOY_PATH}}\${{steps.current-time.outputs.formattedTime}}_${{vars.DEPLOY_NAME}}\*"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] Backup Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
+  #   - name: Change DLL_PATH, Download Upload Module, Unzip (Non-Windows)
+  #     shell: pwsh
+  #     if: runner.os != 'Windows'
+  #     run: |
+  #       "DLL_PATH=net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0/${{vars.NAMESPACE}}.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #       wget -q "https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip" -O "${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip"
+  #       unzip -q "${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip" -d temp
 
-    - name: Publish, IIS stop
-      run: |
-        dotnet publish "net${{env.NET_VERSION}}" -c Release
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] Publish Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        C:\Windows\system32\inetsrv\appcmd stop site "${{vars.SITE_APPPOOL}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] IIS site stop Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        C:\Windows\system32\inetsrv\appcmd stop apppool "${{vars.SITE_APPPOOL}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] IIS apppool stop Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
+
+  #   - name: Restore dependencies, Build Release, Test
+  #     shell: pwsh
+  #     run: |
+  #       dotnet restore "net${{env.NET_VERSION}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=Restore dependencies Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       dotnet build "net${{env.NET_VERSION}}" -c Release --no-restore -v minimal
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=Build Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       dotnet test "net${{env.NET_VERSION}}" -c Release --no-build --verbosity normal
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=Test Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+
+
+  #   - name: NuGet login (OIDC -> temp API key)
+  #     uses: NuGet/login@v1
+  #     id: login
+  #     if: ${{ env.PUSH_NUGET == 'Y' && github.ref == 'refs/heads/master' }}
+  #     with:
+  #       user: ${{secrets.NUGET_USER}}
+
+  #   - name: Pack nugets, Push to NuGet
+  #     shell: pwsh
+  #     if: ${{ env.PUSH_NUGET == 'Y' && github.ref == 'refs/heads/master' }}
+  #     run: |
+  #       dotnet pack "$env:PROJECT_PATH" -c Release --no-build --output .
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=Pack nugets Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=Push to NuGet Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+
+
+  #   - name: Upload Module
+  #     shell: pwsh
+  #     if: ${{ env.IS_DEPLOY == 'Y' && github.ref == 'refs/heads/master' }}
+  #     run: |
+  #       dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "upload" $env:DLL_ID "$env:DLL_PATH" "${{vars.NAMESPACE}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=Upload Module Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+
+
+  #   - name: Completed message
+  #     shell: pwsh
+  #     if: success()
+  #     run: |
+  #       "COMPLETED_MESSAGE=CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+  #   - name: Completed
+  #     continue-on-error: true
+  #     shell: pwsh
+  #     if: ${{ always() && github.ref == 'refs/heads/master' }}
+  #     run: dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "$env:DLL_PATH" "${{vars.NAMESPACE}}"
+
+
+  # Deploy:
+  #   name: ${{vars.DEPLOY_RUNNER_LABEL}}
+  #   needs: [build]
+  #   if: ${{ vars.DEPLOY_RUNNER_LABEL != '' }}
+  #   runs-on:
+  #     group: Default
+  #     labels: ${{vars.DEPLOY_RUNNER_LABEL}}
+
+  #   steps:
+  #   - uses: actions/checkout@v7
+  
+  #   - name: Extract .NET version from workflow file name
+  #     run: |
+  #       $workflowFile = "${{ github.workflow_ref }}".Split('@')[0].Split('/')[-1]
+
+  #       if ($workflowFile -match '_(\d+)\.0\.ya?ml$') {
+  #         $netVersion = $Matches[1]
+  #         Write-Host "NET_VERSION=$netVersion"
+
+  #         "NET_VERSION=$netVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #       }
+  #       else {
+  #         Write-Error "Cannot extract .NET version from workflow file: $workflowFile"
+  #         exit 1
+  #       }
+    
+  #   - name: Setup .NET
+  #     uses: actions/setup-dotnet@v6
+  #     with:
+  #       dotnet-version: "${{env.NET_VERSION}}.0.x"
+
+  #   - name: current-time
+  #     uses: josStorer/get-current-time@v2
+  #     id: current-time
+  #     with:
+  #         format: YYYY-MM-DD_HHmmss
+  #         utcOffset: "+09:00"
+  #     if: always()
+
+
+  #   - name: mkdir temp, Download Upload Module, Unzip
+  #     run: |
+  #       mkdir -p temp
+  #       powershell -Command "Invoke-WebRequest -Uri 'https://download.metafrm.net/github/MetaFrameworkManagementSystemUploadModule${{env.NET_VERSION}}.0.zip' -OutFile '${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip'"
+  #       powershell -Command "Expand-Archive -Path '${{env.METAFRM_UPLOADMODULE}}${{env.NET_VERSION}}.0.zip' -DestinationPath 'temp' -Force"
+
+
+  #   - name: Restore dependencies, Build Release, Test Release
+  #     run: |
+  #       dotnet restore "net${{env.NET_VERSION}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] Restore dependencies Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       dotnet build "net${{env.NET_VERSION}}" -c Release --no-restore -v minimal
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] Build Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       dotnet test "net${{env.NET_VERSION}}" -c Release --no-build --verbosity normal
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] Test Release Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+
+  #   - name: Backup
+  #     run: |
+  #       xcopy /s "${{vars.DEPLOY_PATH}}\${{vars.DEPLOY_NAME}}\*" "${{vars.DEPLOY_PATH}}\${{steps.current-time.outputs.formattedTime}}_${{vars.DEPLOY_NAME}}\*"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] Backup Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+
+  #   - name: Publish, IIS stop
+  #     run: |
+  #       dotnet publish "net${{env.NET_VERSION}}" -c Release
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] Publish Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       C:\Windows\system32\inetsrv\appcmd stop site "${{vars.SITE_APPPOOL}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] IIS site stop Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       C:\Windows\system32\inetsrv\appcmd stop apppool "${{vars.SITE_APPPOOL}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] IIS apppool stop Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
         
-    - name: Sleep for 1 seconds
-      run: Start-Sleep -Seconds 1
+  #   - name: Sleep for 1 seconds
+  #     run: Start-Sleep -Seconds 1
 
-    - name: Deploy to IIS, IIS start
-      run: |
-        xcopy /s /y "net${{env.NET_VERSION}}\bin\Release\net${{env.NET_VERSION}}.0\publish\*" "${{vars.DEPLOY_PATH}}\${{vars.DEPLOY_NAME}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] Deploy to IIS Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        C:\Windows\system32\inetsrv\appcmd start apppool "${{vars.SITE_APPPOOL}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] IIS apppool start Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
-        C:\Windows\system32\inetsrv\appcmd start site "${{vars.SITE_APPPOOL}}"
-        if ($LASTEXITCODE -ne 0) {
-          "COMPLETED_MESSAGE=[Self-hosted] IIS site start Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 1
-        }
+  #   - name: Deploy to IIS, IIS start
+  #     run: |
+  #       xcopy /s /y "net${{env.NET_VERSION}}\bin\Release\net${{env.NET_VERSION}}.0\publish\*" "${{vars.DEPLOY_PATH}}\${{vars.DEPLOY_NAME}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] Deploy to IIS Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       C:\Windows\system32\inetsrv\appcmd start apppool "${{vars.SITE_APPPOOL}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] IIS apppool start Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
+  #       C:\Windows\system32\inetsrv\appcmd start site "${{vars.SITE_APPPOOL}}"
+  #       if ($LASTEXITCODE -ne 0) {
+  #         "COMPLETED_MESSAGE=[Self-hosted] IIS site start Fail !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #         exit 1
+  #       }
 
 
-    - name: Completed message
-      if: success()
-      run: |
-        "COMPLETED_MESSAGE=[Self-hosted] CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  #   - name: Completed message
+  #     if: success()
+  #     run: |
+  #       "COMPLETED_MESSAGE=[Self-hosted] CI/CD Completed !!" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
     
-    - name: Completed
-      continue-on-error: true
-      if: ${{ always() && github.ref == 'refs/heads/master' }}
-      run: dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0/${{vars.NAMESPACE}}.dll" "${{vars.NAMESPACE}}"
+  #   - name: Completed
+  #     continue-on-error: true
+  #     if: ${{ always() && github.ref == 'refs/heads/master' }}
+  #     run: dotnet "${{env.METAFRM_UPLOADMODULE}}.dll" "${{secrets.METAFRM_UPLOADMODULE_ACCESSKEY}}" "${{github.event.pusher.email}}^${{secrets.PASSWORD}}" "notification" "$env:COMPLETED_MESSAGE" "net${{env.NET_VERSION}}/bin/Release/net${{env.NET_VERSION}}.0/${{vars.NAMESPACE}}.dll" "${{vars.NAMESPACE}}"
